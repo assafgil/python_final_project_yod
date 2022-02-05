@@ -46,6 +46,8 @@ cannon_pic_rect = cannon_pic_rect.move(100, height - 155)
 
 cannon_pic = cannon_pic_array[cannon_pic_loc]
 
+cannon_pic_save = cannon_pic_rect.x
+
 dx, dy = 0, 0
 bullet = pygame.image.load('bullet_cannon-removebg-preview.png')
 bullet = pygame.transform.scale(bullet, (60, 60))
@@ -94,10 +96,15 @@ arrow_1 = pygame.transform.scale(arrow_1, (140, 140))
 arrow_2 = arrow_1
 arrow_2 = pygame.transform.rotate(arrow_2, 180)
 
+explosion = pygame.image.load('explosion-removebg-preview.png')
+explosion = pygame.transform.scale(explosion, (300, 300))
+
+explosion_sound = pygame.mixer.Sound('WhatsApp Video 2022-02-05 at 17.22.42.wav')
+exploded = True
+
 pygame.display.set_icon(bg2)
 
 game_time = time.monotonic_ns()
-game_time_jump = time.monotonic_ns()
 
 passed_screen = False
 regular_mode = False
@@ -107,6 +114,8 @@ gravity = False
 start_gravity = 0
 
 loss_by_enemy = False
+
+cannon_can_move = True
 
 
 class Rock:
@@ -271,9 +280,8 @@ while game_loop:
         current_time = time.monotonic_ns()
         if current_time - game_time > 10000000000:
             game_time = current_time
-            enemies.append(Enemy(1500, 770, arrow_2, -1))
-            enemies.append(Enemy(-50, 770, arrow_1, 1))
-
+            enemies.append(Enemy(1500, 780, arrow_2, -1))
+            enemies.append(Enemy(-50, 780, arrow_1, 1))
         # jumping:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and cannon_pic_rect.y == height - 155:
             gravity = True
@@ -289,7 +297,9 @@ while game_loop:
         loss_text = font_loss.render('you lost ! ', True, (255, 0, 0))
         level_text = font_1.render('level is  : ' + str(level), True, (255, 0, 0))
 
-        cannon_pic_rect.centerx = pygame.mouse.get_pos()[0]
+        if cannon_can_move:
+            cannon_pic_rect.centerx = pygame.mouse.get_pos()[0]
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
             # if event.type == pygame.MOUSEBUTTONDOWN:
             pygame.mixer.Sound.play(shooting_sound)
@@ -319,6 +329,8 @@ while game_loop:
 
                 passed_screen = False
                 loss_by_enemy = False
+                cannon_can_move = True
+                exploded = False
                 level = 1
                 score = 0
                 score_helper = 0
@@ -348,6 +360,7 @@ while game_loop:
             for rock_x in rocks:
                 if rock.y >= height - 50:
                     rock_x.transform()
+                    cannon_can_move = False
 
                     display.blit(loss_text, [600, 400])
                     display.blit(restart_text, [640, 550])
@@ -365,6 +378,8 @@ while game_loop:
                         score_helper = 0
                         rock.step = 0.1
                         upgrade_tool = 1
+                        exploded = True
+                        cannon_can_move = True
                         restart()
 
             cannon_pic_rect = cannon_pic_rect.move(dx, dy)
@@ -395,20 +410,23 @@ while game_loop:
         display.blit(go_back_text, [0, 0])
 
         # loosing by enemy
-
         for e in enemies:
             if e.getRect().colliderect(cannon_pic_rect):
                 loss_by_enemy = True
+                if exploded:
+                    pygame.mixer.Sound.play(explosion_sound)
 
         if loss_by_enemy:
+            cannon_can_move = False
+            exploded = False
+            display.blit(explosion, [cannon_pic_rect.x - 100, cannon_pic_rect.y - 100])
             display.blit(loss_text, [600, 400])
             display.blit(restart_text, [640, 550])
             winPause()
             if len(shotArray) > 0:
                 shotArray.clear()
 
-            if 640 <= pos[0] <= 840 and 550 <= pos[
-                1] <= 575:
+            if 640 <= pos[0] <= 840 and 550 <= pos[1] <= 575:
                 loss_by_enemy = False
                 if score_helper > high_score:
                     high_score = score_helper
@@ -420,6 +438,8 @@ while game_loop:
                 for rock in rocks:
                     rock.step = 0.1
                 upgrade_tool = 1
+                exploded = True
+                cannon_can_move = True
                 restart()
 
         if regular_mode:
@@ -435,6 +455,7 @@ while game_loop:
             display.blit(winner_text, [600, 400])
             display.blit(restart_text, [640, 550])
             winPause()
+            cannon_can_move = False
 
             if 640 <= pos[0] <= 840 and 550 <= pos[1] <= 575:
                 level = 1
@@ -443,6 +464,7 @@ while game_loop:
                 for rock in rocks:
                     rock.step = 0.1
                 upgrade_tool = 1
+                cannon_can_move = True
                 restart()
 
         pygame.display.flip()
