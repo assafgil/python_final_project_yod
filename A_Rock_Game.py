@@ -11,23 +11,44 @@ rock_pic = pygame.transform.scale(rock_pic, (100, 100))
 rock_pic2 = pygame.image.load('rock_1.png')
 rock_pic2 = pygame.transform.scale(rock_pic2, (100, 100))
 
-cannon_pic = pygame.image.load('cannon_by_me-removebg-preview.png')
-cannon_pic = pygame.transform.scale(cannon_pic, (115, 115))
-cannon_pic_rect = cannon_pic.get_rect()
+# cannon_pic = pygame.image.load('cannon_by_me-removebg-preview.png')
+# cannon_pic = pygame.transform.scale(cannon_pic, (115, 115))
+
+cannon_pic_array = []
+p1 = pygame.image.load('mycanon1.png')
+p1 = pygame.transform.scale(p1, (115, 115))
+p1.set_colorkey((255, 255, 255))
+p1 = p1.convert_alpha()
+cannon_pic_array.append(p1)
+
+p1 = pygame.image.load('mycanon2.png')
+p1 = pygame.transform.scale(p1, (115, 115))
+p1.set_colorkey((255, 255, 255))
+p1 = p1.convert_alpha()
+cannon_pic_array.append(p1)
+
+p1 = pygame.image.load('mycanon3.png')
+p1 = pygame.transform.scale(p1, (115, 115))
+p1.set_colorkey((255, 255, 255))
+p1 = p1.convert_alpha()
+cannon_pic_array.append(p1)
+
+p1 = pygame.image.load('mycanon4.png')
+p1 = pygame.transform.scale(p1, (115, 115))
+p1.set_colorkey((255, 255, 255))
+p1 = p1.convert_alpha()
+cannon_pic_array.append(p1)
+
+cannon_pic_loc = 3
+
+cannon_pic_rect = p1.get_rect()
 cannon_pic_rect = cannon_pic_rect.move(100, height - 155)
 
-cannon_pic_2 = pygame.image.load('revolver_1-removebg-preview.png')
-cannon_pic_2 = pygame.transform.scale(cannon_pic_2, (115, 115))
-cannon_pic_2 = pygame.transform.rotate(cannon_pic_2, -90)
-
-cannon_pic_save = cannon_pic
+cannon_pic = cannon_pic_array[cannon_pic_loc]
 
 dx, dy = 0, 0
 bullet = pygame.image.load('bullet_cannon-removebg-preview.png')
 bullet = pygame.transform.scale(bullet, (60, 60))
-
-bullet2 = pygame.image.load('b1-removebg-preview.png')
-bullet2 = pygame.transform.scale(bullet2, (60, 60))
 
 bullet_save = bullet
 
@@ -67,10 +88,16 @@ bg2 = pygame.transform.scale(bg2, (width, height))
 pygame.display.set_icon(bg2)
 
 game_time = time.monotonic_ns()
+game_time_jump = time.monotonic_ns()
 
 passed_screen = False
 regular_mode = False
 high_scores_screen = False
+
+gravity = False
+start_gravity = 0
+
+loss_by_enemy = False
 
 
 class Rock:
@@ -121,23 +148,20 @@ class Shot:
 
 
 class Enemy:
-    def __init__(self, x, y, img):
+    def __init__(self, x, y, img, step):
         self.x = x
         self.y = y
         self.img = img
+        self.step = step
 
     def moving(self):
-        if self.x > 1400:
-            self.x -= 1
-        elif self.x == 100:
-            self.x += 1
+        self.x += self.step
 
     def getRect(self):
         return pygame.Rect(self.x, self.y, self.img.get_width(), self.img.get_height())
 
     def display_on_screen(self):
         display.blit(self.img, (self.x, self.y))
-        print(self.x, self.y)
 
 
 enemies = []
@@ -148,16 +172,6 @@ rocks = []
 
 img1 = rock_pic2
 
-freeze = []
-
-
-def freezing():
-    for x in range(2):
-        freeze_int = random.randint(10000, 1000000)
-        freeze_int_2 = random.randint(1000001, 2000000)
-        freeze.append(freeze_int)
-        freeze.append(freeze_int_2)
-
 
 def restart():
     for x in rocks:
@@ -166,6 +180,7 @@ def restart():
     rocks.clear()
     for i in range(level + 2):
         rocks.append(Rock(250 + 400 * i, 0, 0.1, img1))
+    enemies.clear()
 
 
 upgrade_tool = 1
@@ -183,6 +198,8 @@ def winPause():
         j.step = 0
     if len(shotArray) > 0:
         shotArray.clear()
+    for e in enemies:
+        e.step = 0
 
 
 def load_score():
@@ -203,7 +220,6 @@ def save_score(score):
 
 high_score = load_score()
 
-freezing()
 restart()
 game_loop = True
 while game_loop:
@@ -216,40 +232,39 @@ while game_loop:
             img1 = rock_pic
         else:
             img1 = rock_pic2
-        # print(scores)
 
-        # gun change:
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-            cannon_pic = cannon_pic_2
-            bullet = bullet2
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-            cannon_pic = cannon_pic_save
-            bullet = bullet_save
+        cannon_pic_loc = cannon_pic_loc + 0.01
+        if cannon_pic_loc > len(cannon_pic_array):
+            cannon_pic_loc = 0
+        cannon_pic = cannon_pic_array[int(cannon_pic_loc)]
 
         # creating enemies:
         current_time = time.monotonic_ns()
-        if current_time - game_time > 2000000000:
+        if current_time - game_time > 10000000000:
             game_time = current_time
-            enemies.append(Enemy(1450, 100, rock_pic))
-            enemies.append(Enemy(100, 100, rock_pic))
-        for enemy in enemies:
-            print(1)
-            enemy.display_on_screen()
-            enemy.moving()
+            enemies.append(Enemy(1500, 800, rock_pic, -1))
+            enemies.append(Enemy(-50, 800, rock_pic, 1))
 
-        '''freezing '''
-        for f in freeze:
-            if score_helper == f:
-                winPause()
+        # jumping:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and cannon_pic_rect.y == height - 155:
+            gravity = True
+            start_gravity = time.time()
+        if cannon_pic_rect.y > height - 155:
+            cannon_pic_rect.y = height - 155
+            gravity = False
+        if gravity:
+            cannon_pic_rect.y = height - (
+                    50 * (time.time() - start_gravity) - 50 * (time.time() - start_gravity) ** 4) - 230
 
         score_text = font_1.render('score :  ' + str(score_helper), True, (255, 0, 0))
         loss_text = font_loss.render('you lost ! ', True, (255, 0, 0))
         level_text = font_1.render('level is  : ' + str(level), True, (255, 0, 0))
 
         cannon_pic_rect.centerx = pygame.mouse.get_pos()[0]
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_w:
+            # if event.type == pygame.MOUSEBUTTONDOWN:
             pygame.mixer.Sound.play(shooting_sound)
-            shotArray.append(Shot(cannon_pic_rect.x + 30, height - 150, bullet))
+            shotArray.append(Shot(cannon_pic_rect.x + 30, cannon_pic_rect.y, bullet))
 
         if cannon_pic_rect.left < 0:
             cannon_pic_rect.left = 0
@@ -274,17 +289,20 @@ while game_loop:
                     save_score(high_score)
 
                 passed_screen = False
+                loss_by_enemy = False
                 level = 1
                 score = 0
                 score_helper = 0
                 for rock in rocks:
                     rock.step = 0.1
                 restart()
-                freeze.clear()
-                freezing()
 
         display.fill((50, 50, 50))
         display.blit(bg, [0, 0])
+
+        for enemy in enemies:
+            enemy.display_on_screen()
+            enemy.moving()
 
         for rock in rocks:
             rock.display_on_screen()
@@ -311,8 +329,6 @@ while game_loop:
                         rock.step = 0.1
                         upgrade_tool = 1
                         restart()
-                        freeze.clear()
-                        freezing()
 
             cannon_pic_rect = cannon_pic_rect.move(dx, dy)
             display.blit(cannon_pic, cannon_pic_rect)
@@ -331,14 +347,43 @@ while game_loop:
                     score += 1
 
                     score_helper += 1
-                    newRock = Rock(random.randint(10, width - 100), 50, rock.step + 0.05, img1)
+                    newRock = Rock(random.randint(100, width - 150), 50, rock.step + 0.05, img1)
                     rocks.append(newRock)
                     newRock.transform()
-                    shotArray.remove(shot)
+                    if shot in shotArray:
+                        shotArray.remove(shot)
                     rocks.remove(rock)
 
         display.blit(score_text, [600, 50])
         display.blit(go_back_text, [0, 0])
+
+        # loosing by enemy
+
+        for e in enemies:
+            if e.getRect().colliderect(cannon_pic_rect):
+                loss_by_enemy = True
+
+        if loss_by_enemy:
+            display.blit(loss_text, [600, 400])
+            display.blit(restart_text, [640, 550])
+            winPause()
+            if len(shotArray) > 0:
+                shotArray.clear()
+
+            if 640 <= pos[0] <= 840 and 550 <= pos[
+                1] <= 575:
+                loss_by_enemy = False
+                if score_helper > high_score:
+                    high_score = score_helper
+                    save_score(high_score)
+
+                level = 1
+                score = 0
+                score_helper = 0
+                for rock in rocks:
+                    rock.step = 0.1
+                upgrade_tool = 1
+                restart()
 
         if regular_mode:
             display.blit(level_text, [100, 800])
@@ -349,7 +394,7 @@ while game_loop:
                 upgrade_tool += 1
 
         # win:
-        if level == 5:
+        if level == 3:
             display.blit(winner_text, [600, 400])
             display.blit(restart_text, [640, 550])
             winPause()
@@ -362,10 +407,11 @@ while game_loop:
                     rock.step = 0.1
                 upgrade_tool = 1
                 restart()
-                freeze.clear()
-                freezing()
 
         pygame.display.flip()
+
+    # menu screen :
+
     pos = (0, 0)
     if event.type == pygame.MOUSEBUTTONDOWN:
         pos = pygame.mouse.get_pos()
