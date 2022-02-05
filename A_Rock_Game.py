@@ -79,11 +79,20 @@ thanks_text = font_3.render('Special thanks for Gil Natanzon', True, (0, 0, 0))
 go_back_text = font_1.render('menu', True, (255, 0, 0))
 winner_text = game_font.render('winner ! ', True, (255, 0, 0))
 
-bg = pygame.image.load('bg_rock_game.png')
+bg = pygame.image.load('bg_rock.png')
 bg = pygame.transform.scale(bg, (width, height))
 
 bg2 = pygame.image.load('bg_rock_game2.png')
 bg2 = pygame.transform.scale(bg2, (width, height))
+
+rail = pygame.image.load('rail.png')
+rail = pygame.transform.scale(rail, (41, 76))
+
+arrow_1 = pygame.image.load('arrow-removebg-preview.png')
+arrow_1 = pygame.transform.scale(arrow_1, (140, 140))
+
+arrow_2 = arrow_1
+arrow_2 = pygame.transform.rotate(arrow_2, 180)
 
 pygame.display.set_icon(bg2)
 
@@ -164,6 +173,26 @@ class Enemy:
         display.blit(self.img, (self.x, self.y))
 
 
+class Rail:
+    def __init__(self, x, y, img, step):
+        self.x = x
+        self.y = y
+        self.img = img
+        self.step = step
+
+    def display_on_screen(self):
+        display.blit(self.img, (self.x, self.y))
+
+    def moving(self):
+        self.x += self.step
+
+
+rails = []
+i = -41
+while i <= 1500:
+    rails.append(Rail(i, 790, rail, 1))
+    i += 41
+
 enemies = []
 
 shotArray = []
@@ -242,8 +271,8 @@ while game_loop:
         current_time = time.monotonic_ns()
         if current_time - game_time > 10000000000:
             game_time = current_time
-            enemies.append(Enemy(1500, 800, rock_pic, -1))
-            enemies.append(Enemy(-50, 800, rock_pic, 1))
+            enemies.append(Enemy(1500, 770, arrow_2, -1))
+            enemies.append(Enemy(-50, 770, arrow_1, 1))
 
         # jumping:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and cannon_pic_rect.y == height - 155:
@@ -299,6 +328,14 @@ while game_loop:
 
         display.fill((50, 50, 50))
         display.blit(bg, [0, 0])
+
+        # rails:
+        for a_rail in rails:
+            a_rail.display_on_screen()
+            a_rail.moving()
+            if a_rail.x > width:
+                rails.remove(a_rail)
+                rails.append(Rail(-18, 790, rail, 1))
 
         for enemy in enemies:
             enemy.display_on_screen()
@@ -386,7 +423,7 @@ while game_loop:
                 restart()
 
         if regular_mode:
-            display.blit(level_text, [100, 800])
+            display.blit(level_text, [100, 730])
             if score == 25:
                 score = 0
                 level += 1
