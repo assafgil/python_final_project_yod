@@ -66,6 +66,8 @@ bg2 = pygame.transform.scale(bg2, (width, height))
 
 pygame.display.set_icon(bg2)
 
+game_time = time.monotonic_ns()
+
 passed_screen = False
 regular_mode = False
 high_scores_screen = False
@@ -117,6 +119,28 @@ class Shot:
     def getRect(self):
         return pygame.Rect(self.x, self.y, self.img.get_width(), self.img.get_height())
 
+
+class Enemy:
+    def __init__(self, x, y, img):
+        self.x = x
+        self.y = y
+        self.img = img
+
+    def moving(self):
+        if self.x > 1400:
+            self.x -= 1
+        elif self.x == 100:
+            self.x += 1
+
+    def getRect(self):
+        return pygame.Rect(self.x, self.y, self.img.get_width(), self.img.get_height())
+
+    def display_on_screen(self):
+        display.blit(self.img, (self.x, self.y))
+        print(self.x, self.y)
+
+
+enemies = []
 
 shotArray = []
 
@@ -201,6 +225,17 @@ while game_loop:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
             cannon_pic = cannon_pic_save
             bullet = bullet_save
+
+        # creating enemies:
+        current_time = time.monotonic_ns()
+        if current_time - game_time > 2000000000:
+            game_time = current_time
+            enemies.append(Enemy(1450, 100, rock_pic))
+            enemies.append(Enemy(100, 100, rock_pic))
+        for enemy in enemies:
+            print(1)
+            enemy.display_on_screen()
+            enemy.moving()
 
         '''freezing '''
         for f in freeze:
