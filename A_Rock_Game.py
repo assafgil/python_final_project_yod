@@ -80,6 +80,7 @@ game_text_rect_bool = False
 thanks_text = font_3.render('Special thanks for Gil Natanzon', True, (0, 0, 0))
 go_back_text = font_1.render('menu', True, (255, 0, 0))
 winner_text = game_font.render('winner ! ', True, (255, 0, 0))
+game_paused_text = game_font.render('game paused', True, (0, 0, 0))
 
 bg = pygame.image.load('bg_rock.png')
 bg = pygame.transform.scale(bg, (width, height))
@@ -90,13 +91,13 @@ bg2 = pygame.transform.scale(bg2, (width, height))
 rail = pygame.image.load('rail.png')
 rail = pygame.transform.scale(rail, (41, 76))
 
-arrow_1 = pygame.image.load('arrow-removebg-preview.png')
+arrow_1 = pygame.image.load('hetz.png')
 arrow_1 = pygame.transform.scale(arrow_1, (140, 140))
 
 arrow_2 = arrow_1
 arrow_2 = pygame.transform.rotate(arrow_2, 180)
 
-explosion = pygame.image.load('explosion-removebg-preview.png')
+explosion = pygame.image.load('boom.png')
 explosion = pygame.transform.scale(explosion, (300, 300))
 
 explosion_sound = pygame.mixer.Sound('WhatsApp Video 2022-02-05 at 17.22.42.wav')
@@ -116,6 +117,12 @@ start_gravity = 0
 loss_by_enemy = False
 
 cannon_can_move = True
+
+not_paused = True
+
+clicked = False
+
+mouse_pos_before_pause = pygame.mouse.get_pos()
 
 
 class Rock:
@@ -138,7 +145,8 @@ class Rock:
         return pygame.Rect(self.x, self.y, self.img.get_width(), self.img.get_height())
 
     def goDown(self):
-        self.y += self.step
+        if not_paused:
+            self.y += self.step
 
     def transform(self):
         self.img = pygame.transform.scale(self.img, (random.randint(75, 150), random.randint(75, 150)))
@@ -221,7 +229,7 @@ def restart():
     enemies.clear()
 
 
-upgrade_tool = 1
+upgrade_tool = level
 
 
 def levelUpgrade():
@@ -238,6 +246,14 @@ def winPause():
         shotArray.clear()
     for e in enemies:
         e.step = 0
+
+
+def game_pause():
+    for enemy in enemies:
+        enemy.step = 0
+
+    if len(shotArray) > 0:
+        shotArray.clear()
 
 
 def load_score():
@@ -270,7 +286,6 @@ while game_loop:
             img1 = rock_pic
         else:
             img1 = rock_pic2
-
         cannon_pic_loc = cannon_pic_loc + 0.01
         if cannon_pic_loc > len(cannon_pic_array):
             cannon_pic_loc = 0
@@ -278,10 +293,11 @@ while game_loop:
 
         # creating enemies:
         current_time = time.monotonic_ns()
-        if current_time - game_time > 10000000000:
-            game_time = current_time
-            enemies.append(Enemy(1500, 780, arrow_2, -1))
-            enemies.append(Enemy(-50, 780, arrow_1, 1))
+        if not_paused:
+            if current_time - game_time > 10000000000:
+                game_time = current_time
+                enemies.append(Enemy(1500, 780, arrow_1, -1))
+                enemies.append(Enemy(-50, 780, arrow_2, 1))
         # jumping:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and cannon_pic_rect.y == height - 155:
             gravity = True
@@ -321,7 +337,6 @@ while game_loop:
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
             # print(pos)
-
             if 0 <= pos[0] <= 122 and 0 <= pos[1] <= 27:
                 if score_helper > high_score:
                     high_score = score_helper
@@ -336,10 +351,35 @@ while game_loop:
                 score_helper = 0
                 for rock in rocks:
                     rock.step = 0.1
+                not_paused = True
+                clicked = False
                 restart()
 
         display.fill((50, 50, 50))
         display.blit(bg, [0, 0])
+
+        # pause:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            clicked = True
+            not_paused = False
+            game_pause()
+            cannon_can_move = False
+
+        if clicked:
+            pygame.draw.rect(display, (0, 0, 0), (0, 0, width, height), 5)
+            game_time_save = game_time
+            current_time_save = current_time
+        if clicked and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            clicked = False
+            not_paused = True
+            cannon_can_move = True
+
+            for enemy in enemies:
+                if enemy.img == arrow_1:
+                    enemy.step = -1
+
+                if enemy.img == arrow_2:
+                    enemy.step = 1
 
         # rails:
         for a_rail in rails:
@@ -380,6 +420,9 @@ while game_loop:
                         upgrade_tool = 1
                         exploded = True
                         cannon_can_move = True
+                        not_paused = True
+                        clicked = False
+                        pygame.mixer.music.unpause()
                         restart()
 
             cannon_pic_rect = cannon_pic_rect.move(dx, dy)
@@ -419,7 +462,7 @@ while game_loop:
         if loss_by_enemy:
             cannon_can_move = False
             exploded = False
-            display.blit(explosion, [cannon_pic_rect.x - 100, cannon_pic_rect.y - 100])
+            display.blit(explosion, [cannon_pic_rect.x - 100, cannon_pic_rect.y - 120])
             display.blit(loss_text, [600, 400])
             display.blit(restart_text, [640, 550])
             winPause()
@@ -440,6 +483,9 @@ while game_loop:
                 upgrade_tool = 1
                 exploded = True
                 cannon_can_move = True
+                not_paused = True
+                clicked = False
+                pygame.mixer.music.unpause()
                 restart()
 
         if regular_mode:
@@ -451,7 +497,7 @@ while game_loop:
                 upgrade_tool += 1
 
         # win:
-        if level == 3:
+        if level == 4:
             display.blit(winner_text, [600, 400])
             display.blit(restart_text, [640, 550])
             winPause()
@@ -465,10 +511,12 @@ while game_loop:
                     rock.step = 0.1
                 upgrade_tool = 1
                 cannon_can_move = True
+                not_paused = True
+                clicked = False
+                pygame.mixer.music.unpause()
                 restart()
 
-        pygame.display.flip()
-
+    pygame.display.flip()
     # menu screen :
 
     pos = (0, 0)
@@ -479,6 +527,7 @@ while game_loop:
             high_scores_screen = False
 
     if not passed_screen and not high_scores_screen:
+        clicked_on_high_scores = False
         display.blit(bg2, [0, 0])
         font_2 = pygame.font.SysFont('j', 70, bold=True)
         start_text = font_2.render('regular mode  ', True, (0, 0, 0))
@@ -514,9 +563,18 @@ while game_loop:
 
         if 625 <= pos[0] <= 940 and 750 <= pos[1] <= 788:
             high_scores_screen = True
+            clicked_on_high_scores = True
             display.blit(bg2, [0, 0])
             display.blit(menu_text_passed_screen, [0, 0])
             display.blit(highScores_text, [450, 500])
+
+        pos1 = pygame.mouse.get_pos()
+        if 625 <= pos1[0] <= 984 and 450 <= pos1[1] <= 480:
+            pygame.draw.rect(display, (0, 0, 0), (600, 440, 420, 60), 5)
+        if 625 <= pos1[0] <= 984 and 600 <= pos1[1] <= 630:
+            pygame.draw.rect(display, (0, 0, 0), (600, 590, 420, 60), 5)
+        if not clicked_on_high_scores and 625 <= pos1[0] <= 984 and 750 <= pos1[1] <= 780:
+            pygame.draw.rect(display, (0, 0, 0), (600, 740, 420, 60), 5)
 
         # print(pos)
 
